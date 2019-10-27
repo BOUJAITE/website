@@ -1,0 +1,191 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		{% load staticfiles %}
+		{% csrf_token %}
+		{% block head %}
+		<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons">
+		<link rel="stylesheet" href="https://unpkg.com/bootstrap-material-design@4.1.1/dist/css/bootstrap-material-design.min.css" integrity="sha384-wXznGJNEXNG1NFsbm0ugrLFMQPWswR3lds2VeinahP8N0zJw9VWSopbjv2x7WCvX" crossorigin="anonymous">
+		{% endblock %}
+		<link rel="stylesheet" type="text/css" href="{% static 'main.css' %}" />
+		<link rel="stylesheet" type="text/css" href="{% static 'noscript.css' %}" />
+		<title>TRADALI</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+		<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+		<style type="text/css">
+			* {
+			  box-sizing: border-box;
+			}
+			.all{
+				background-color: white;
+			}
+
+			.left{
+				width: 40%;
+				float:left;
+				background-color: white;
+			}
+			.right{
+				width: 60%;
+				float:right;
+				background-color: white;
+
+			}
+
+
+			#customers {
+			  font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+			  border-collapse: collapse;
+			  width: 100%;
+			  background-color: white;
+			  float:center;
+			}
+
+
+
+			#customers td, #customers th {
+			  border: 1px solid #ddd;
+			}
+
+			#customers tr:nth-child(even){background-color: #f2f2f2;}
+
+			#customers tr:hover {background-color: #ddd;}
+
+			#customers th {
+			  text-align: left;
+			  background-color: #303030;
+			  color: white;
+			}
+			.no-js #loader { display: none;  }
+			.js #loader { display: block; position: absolute; left: 100px; top: 0; }
+			.se-pre-con {
+				position: fixed;
+				left: 0px;
+				top: 0px;
+				width: 100%;
+				height: 100%;
+				z-index: 9999;
+				background: url({% static 'giphy.gif' %}) center no-repeat black;
+			}
+		</style>
+	</head>
+	<body class="is-preload">
+		<div class="se-pre-con"></div>
+		<!-- Wrapper -->
+			<div id="wrapper" class="fade-in">
+
+				<!-- Intro -->
+					<div id="intro">
+						<h1>TradAli.com</h1>
+						<p> A website providing trading advice on <br>CAC40 shares</p>
+						<ul class="actions">
+							<li><a href="#header" >---> Discover</a></li>
+						</ul>
+					</div>
+
+				<!-- Header -->
+					<header id="header">
+						<a href="index.html" class="logo">Trading</a>
+					</header>
+
+				<!-- Nav -->
+					<nav id="nav">
+						<ul class="links">
+							<li><a href="http://127.0.0.1:8000/webtradali/webtradali">HOME</a></li>
+							<li><a href="http://127.0.0.1:8000/webtradali/ta">TECHNICAL ANALYSIS</a></li>
+							<li class="active"><a href="http://127.0.0.1:8000/webtradali/pp">PRICE PREDICTION</a></li>
+							<li><a href="http://127.0.0.1:8000/webtradali/contact">Contact</a></li>
+						</ul>
+						<ul class="icons">
+							<li>Welcom !</li>
+						</ul>
+					</nav>
+					<div id="main">
+						{% csrf_token %}
+						<form action="{% url 'price_pred' %}" method="POST">
+							{% csrf_token %}
+							<div class="marge">{{ pred.name_quote }}</div>
+							<div class="marge">{{ pred.name_models }}</div>
+							<button class="button" type="submit" style="vertical-align:middle"><span> GO! </span></button>
+						</form>
+						<section class="posts">
+							<article class="left">
+								{% csrf_token %}
+								<p>{{score1}}</p>
+								<p>{{score2}}</p>
+							</article>
+							<article class="right">
+								{% csrf_token %}
+								<p>{{conclusion}}</p>
+							</article>
+						</article>
+					</div>
+
+
+				<!-- Copyright -->
+					<div id="copyright">
+						<ul><li>Design: Ali Boujaite</li></ul>
+					</div>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+			<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+			<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+			<script src="https://unpkg.com/popper.js@1.12.6/dist/umd/popper.js" integrity="sha384-fA23ZRQ3G/J53mElWqVJEGJzU0sTs+SvzG8fXVWP+kJQ1lwFAOkcUOysnlKJC33U" crossorigin="anonymous"></script>
+			<script src="https://unpkg.com/bootstrap-material-design@4.1.1/dist/js/bootstrap-material-design.js" integrity="sha384-CauSuKpEqAFajSpkdjv3z9t8E7RlpJ1UP0lKM/+NdtSarroVKu069AlsRPKkFBz9" crossorigin="anonymous"></script>
+			<script>
+				//  Changement de class
+				var changeClass = function (r,className1,className2) {
+					var regex = new RegExp("(?:^|\\s+)" + className1 + "(?:\\s+|$)");
+					if( regex.test(r.className) ) {
+						r.className = r.className.replace(regex,' '+className2+' ');
+				    }
+				    else{
+						r.className = r.className.replace(new RegExp("(?:^|\\s+)" + className2 + "(?:\\s+|$)"),' '+className1+' ');
+				    }
+				    return r.className;
+				};	
+				//  Creation du bouton pour écran plus petit
+				var menuElements = document.getElementById('menu');
+				menuElements.insertAdjacentHTML('afterBegin','<button type="button" id="menutoggle" class="navtoogle" aria-hidden="true"><i aria-hidden="true" class="icon-menu"> </i> Menu</button>');
+				//  Affichage / fermeture du menu
+				document.getElementById('menutoggle').onclick = function() {
+				changeClass(this, 'navtoogle active', 'navtoogle');
+					}
+				// http://tympanus.net/codrops/2013/05/08/responsive-retina-ready-menu/comment-page-2/#comment-438918
+				document.onclick = function(e) {
+					var mobileButton = document.getElementById('menutoggle'),
+						buttonStyle =  mobileButton.currentStyle ? mobileButton.currentStyle.display : getComputedStyle(mobileButton, null).display;
+						if(buttonStyle === 'block' && e.target !== mobileButton && new RegExp(' ' + 'active' + ' ').test(' ' + mobileButton.className + ' ')) {
+						changeClass(mobileButton, 'navtoogle active', 'navtoogle');
+					}
+				}
+			</script>
+			<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+			<script src="http://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.js"></script>
+
+			<script type="text/javascript">
+				// Wait for window load
+				$(window).load(function() {
+					// Animate loader off screen
+					$(".se-pre-con").fadeOut("slow");
+				});
+			</script>
+	</body>
+</html>

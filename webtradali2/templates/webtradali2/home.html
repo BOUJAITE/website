@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+{% load staticfiles %}
+{% csrf_token %}
+<link rel="stylesheet" type="text/css" href="{% static 'myStyle.css' %}" />
+<link rel="stylesheet" type="text/css" href="{% static 'default.css' %}" />
+<link rel="stylesheet" type="text/css" href="{% static 'component.css' %}" />
+<script src="{% static 'modernizr.custom.js' %}"></script>
+
+
+<head>
+	<title>TRADALI.com</title>
+	<style>
+		body {
+			font-family: 'Lato', Calibri, Arial, sans-serif;
+			color: black;
+			background-color: white;
+		 	background-image: url('/static/black.jpg');
+
+		 	min-height: 380px;
+
+		  	/* Center and scale the image nicely */
+		 	background-position: center;
+		 	background-repeat: no-repeat;
+		 	background-size: cover;
+
+		  	/* Needed to position the navbar */
+		 	position: relative;
+		}
+
+		a {
+			color: #FFA500;
+			text-decoration: none;
+		}
+
+		a:hover {
+			color: #fff;
+		}
+
+
+		#customers {
+		  font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+		  border-collapse: collapse;
+		  width: 40%;
+		  background-color: white;
+		}
+
+		#customers td, #customers th {
+		  border: 1px solid #ddd;
+		  padding: 8px;
+		}
+
+		#customers tr:nth-child(even){background-color: #f2f2f2;}
+
+		#customers tr:hover {background-color: #ddd;}
+
+		#customers th {
+		  padding-top: 12px;
+		  padding-bottom: 12px;
+		  text-align: left;
+		  background-color: #4CAF50;
+		  color: white;
+		}
+	</style>
+</head>
+
+<body class="bg-img">
+<img src="{% static 'logotradali.png' %}" width="100" height="60">
+<title>TRADALI.com</title>
+<div class="bg-img ">	
+	<div>
+		<nav id="menu" class="nav">					
+			<ul>
+				<li>
+					<a href="http://127.0.0.1:8000/webtradali">
+						<span class="icon">
+							<i aria-hidden="true" class="icon-home"></i>
+						</span>
+						<span>HOME</span>
+					</a>
+				</li>
+				<li>
+					<a href="http://127.0.0.1:8000/about">
+						<span class="icon"> 
+							<i aria-hidden="true" class="icon-services"></i>
+						</span>
+						<span>ABOUT</span>
+					</a>
+				</li>
+				<li>
+					<a href="http://127.0.0.1:8000/ta">
+						<span class="icon">
+							<i aria-hidden="true" class="icon-portfolio"></i>
+						</span>
+						<span>TECHNICAL ANALYSIS</span>
+					</a>
+				</li>
+				<li>
+					<a href="http://127.0.0.1:8000/pp">
+						<span class="icon">
+							<i aria-hidden="true" class="icon-blog"></i>
+						</span>
+						<span>PRICE PREDICTION</span>
+					</a>
+				</li>
+				<li>
+					<a href="http://127.0.0.1:8000/summary">
+						<span class="icon">
+							<i aria-hidden="true" class="icon-team"></i>
+						</span>
+						<span>SUMMARY</span>
+					</a>
+				</li>
+				<li>
+					<a href="http://127.0.0.1:8000/contact">
+						<span class="icon">
+							<i aria-hidden="true" class="icon-contact"></i>
+						</span>
+						<span>CONTACT</span>
+					</a>
+				</li>
+			</ul>
+		</nav>
+	</div>
+	<div class="customers">
+	<table id="customers" class="customers">
+	  <tr>
+	    <th>Label</th>
+	    <th>Value</th>
+	    <th>Performance</th>
+
+	  </tr>
+	  {% for i,j,k in dict_cot %}
+	  <tr>
+	    <td> {{ i }}</td>
+	    <td>{{ j }}</td>
+	    <td>{{ k }}</td>
+	  </tr>
+	  {% endfor %}
+	</table>
+	</div>
+</div><!-- /container -->
+
+
+<script>
+	//  Changement de class
+	var changeClass = function (r,className1,className2) {
+		var regex = new RegExp("(?:^|\\s+)" + className1 + "(?:\\s+|$)");
+		if( regex.test(r.className) ) {
+			r.className = r.className.replace(regex,' '+className2+' ');
+	    }
+	    else{
+			r.className = r.className.replace(new RegExp("(?:^|\\s+)" + className2 + "(?:\\s+|$)"),' '+className1+' ');
+	    }
+	    return r.className;
+	};	
+	//  Creation du bouton pour écran plus petit
+	var menuElements = document.getElementById('menu');
+	menuElements.insertAdjacentHTML('afterBegin','<button type="button" id="menutoggle" class="navtoogle" aria-hidden="true"><i aria-hidden="true" class="icon-menu"> </i> Menu</button>');
+	//  Affichage / fermeture du menu
+	document.getElementById('menutoggle').onclick = function() {
+	changeClass(this, 'navtoogle active', 'navtoogle');
+		}
+	// http://tympanus.net/codrops/2013/05/08/responsive-retina-ready-menu/comment-page-2/#comment-438918
+	document.onclick = function(e) {
+		var mobileButton = document.getElementById('menutoggle'),
+			buttonStyle =  mobileButton.currentStyle ? mobileButton.currentStyle.display : getComputedStyle(mobileButton, null).display;
+			if(buttonStyle === 'block' && e.target !== mobileButton && new RegExp(' ' + 'active' + ' ').test(' ' + mobileButton.className + ' ')) {
+			changeClass(mobileButton, 'navtoogle active', 'navtoogle');
+		}
+	}
+</script>
+</div>
+</body>
+</html>
+
+
+
+</html>
+
+
