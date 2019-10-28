@@ -12,16 +12,166 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.offline import plot
 from datetime import datetime
+import pandas_datareader.data as web
 import numpy as np
 import chart_studio.plotly as py
+from scipy import stats
 
 def index(request):
 
+	#date
+	start_date = '2010-1-1'
+	now = datetime.now()
+	present_year = now.year
+	present_month = now.month
+	present_day = now.day
+	end_date = '%d-%d-%d'%(present_year,present_month,present_day)
+	
 	#DATAFRAME
-	df = pd.read_excel(r'C:\Users\Boujaite Ali\Desktop\projet fin etude\DWH\CAC40.xlsx')
+	df = web.DataReader('^FCHI' , 'yahoo', start_date, end_date)
+	monthlydf = df.resample('M').apply(lambda x: x[-1])
+	quartersdf = df.resample('4M').apply(lambda x: x[-1])
+	
+	#market
+	df_market = web.DataReader('^FCHI' , 'yahoo', start_date, end_date)
+	monthly_df_market = df_market.resample('M').apply(lambda x: x[-1])
+	quarters_df_market = df_market.resample('4M').apply(lambda x: x[-1])
 
 
+	################################ FUNCTIONS 
 
+
+	def rolling_mean_std(df,df_close,t_window) :
+		df[f'{t_window}'] = df_close.rolling(window=t_window).mean()
+		rm = df_close.rolling(window=t_window).mean()
+		df[f'std_{t_window}'] = df_close.rolling(window=t_window).std()
+		rstd = df_close.rolling(window=t_window).std()
+		df['upper_band'] = rm + rstd *2
+		df['lower_band'] = rm - rstd *2
+		return df
+
+	def get_estimator(price_data, window=30, trading_periods=252, clean=True):
+		'''
+		Volatility calculation
+		'''
+
+		log_hl = (price_data['High'] / price_data['Low']).apply(np.log)
+		log_co = (price_data['Close'] / price_data['Open']).apply(np.log)
+
+		rs = 0.5 * log_hl**2 - (2*math.log(2)-1) * log_co**2
+		
+		def f(v):
+			return (trading_periods * v.mean())**0.5
+		
+		result = rs.rolling(window=window, center=False).apply(func=f)
+		
+		if clean:
+			return result.dropna()
+		else:
+			return result
+
+		
+	def moving_average(df, n):
+		n=n+1
+		MA = pd.Series(df['Adj Close'].rolling(n, min_periods=n).mean(), name='MA_' + str(n-1))
+		df= df.join(MA)
+		return df
+
+
+	def exponential_moving_average(df, n):
+		n=n+1
+		EMA = pd.Series(df['Adj Close'].ewm(span=n, min_periods=n).mean(), name='EMA_' + str(n-1))
+		df= df.join(EMA)
+		return df
+
+
+	def compute_daily_returns(df):
+		daily_returns = (df/df.shift(1)) - 1
+		daily_returns = daily_returns.fillna(0)
+		return daily_returns
+
+
+	def relative_strength_index(df, n):
+		'''
+		RSI à utiliser dans le DL
+		'''
+		n=n+1
+		i = 0
+		UpI = [0]
+		DoI = [0]
+		while i + 1 <= df.reset_index(drop = True).index[-1]:
+			UpMove = df.reset_index(drop = True).loc[i + 1, 'High'] - df.reset_index(drop = True).loc[i, 'High']
+			DoMove = df.reset_index(drop = True).loc[i, 'Low'] - df.reset_index(drop = True).loc[i + 1, 'Low']
+			if UpMove > DoMove and UpMove > 0:
+				UpD = UpMove
+			else:
+				UpD = 0
+			UpI.append(UpD)
+			if DoMove > UpMove and DoMove > 0:
+				DoD = DoMove
+			else:
+				DoD = 0
+			DoI.append(DoD)
+			i = i + 1
+		UpI = pd.Series(UpI)
+		DoI = pd.Series(DoI)
+		PosDI = pd.Series(UpI.ewm(span=n, min_periods=n).mean())
+		NegDI = pd.Series(DoI.ewm(span=n, min_periods=n).mean())
+		RSI = pd.Series(PosDI / (PosDI + NegDI))
+		return RSI
+
+	def VaR(df):
+		daily_returns = df["Adj Close"].pct_change()
+		daily_returns = daily_returns.dropna(how='any') 
+		
+		#Sort Returns in Ascending Order
+		sorted_returns = sorted(daily_returns)
+		varg = np.percentile(sorted_returns, 5)
+		return varg
+
+	#indicators
+	
+	df['daily returns'] = compute_daily_returns(df['Adj Close'])
+	#########indicators
+	for n in [5,10,20,50,100]:
+		##########moving averages
+		df = moving_average(df,n)
+		df = exponential_moving_average(df,n)
+		##########RSI
+		df[f'RSI{n}'] = relative_strength_index(df,n).values
+	
+	########CAPM (MEDAF)
+
+	##########monthly_data
+	monthly_returns = monthlydf['Adj Close'].pct_change(1)
+	clean_monthly_returns = monthly_returns.dropna(axis=0)# drop first missing row
+	y = clean_monthly_returns
+
+	market_monthly_returns = monthly_df_market['Adj Close'].pct_change(1)
+	market_clean_monthly_returns = market_monthly_returns.dropna(axis=0)
+	x = market_clean_monthly_returns
+	slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+
+	df['beta'] = slope
+
+
+	######## Valuation at risk VaR
+	df['VaR'] = VaR(df)
+
+	########sharp ratio
+	returns = df['daily returns']
+	# annualized Sharpe ratio
+	sharpe_ratio = np.sqrt(252) * (returns.mean() / returns.std())
+	df['sharpe_ratio'] = sharpe_ratio
+
+	######## compound annual growth rate (CAGR)
+	# Get the number of days 
+	days = (df.index[-1] - df.index[0]).days
+	# Calculate the CAGR 
+	cagr = ((((df['Adj Close'][-1]) / df['Adj Close'][1])) ** (365.0/days)) - 1
+	df['cagr'] = cagr
+
+	#param
 	ma5 = "{0:.2f}".format(round(df['MA_5'].iloc[-1],2)) 
 	ma10 = "{0:.2f}".format(round(df['MA_10'].iloc[-1],2))  
 	ma20 = "{0:.2f}".format(round(df['MA_20'].iloc[-1],2))   
@@ -81,7 +231,7 @@ def index(request):
 		return np.convolve(interval, window, 'same')
 
 	mv_y = movingaverage(df.Close)
-	mv_x = df.Date
+	mv_x = df.index
 
 	# Clip the ends
 	mv_x = mv_x[5:-5]
@@ -92,7 +242,7 @@ def index(request):
 
 	x,y,z,w,k,v=[],[],[],[],[],[]
 
-	x=df['Date'].tolist()
+	x=df.index.tolist()
 	y=df['Open'].tolist()
 	z=df['High'].tolist()
 	w=df['Low'].tolist()
@@ -280,14 +430,164 @@ def about(request):
 	return render(request, 'webtradali2/about.html', locals())
 
 def tech_analysis(request):
+
+	#date
+	start_date = '2010-1-1'
+	now = datetime.now()
+	present_year = now.year
+	present_month = now.month
+	present_day = now.day
+	end_date = '%d-%d-%d'%(present_year,present_month,present_day)
+	
+	#validation
 	selec = quotation(request.POST or None, request.FILES or None)
 	if selec.is_valid():
 		cote = selec.cleaned_data["name_quote"]
 		#DATAFRAME
-		df = pd.read_excel(fr'C:\Users\Boujaite Ali\Desktop\projet fin etude\DWH\{cote}.xlsx')
+		df = web.DataReader(f'{cote}' , 'yahoo', start_date, end_date)
+		monthlydf = df.resample('M').apply(lambda x: x[-1])
+		quartersdf = df.resample('4M').apply(lambda x: x[-1])
+		
+		#market
+		df_market = web.DataReader('^FCHI' , 'yahoo', start_date, end_date)
+		monthly_df_market = df_market.resample('M').apply(lambda x: x[-1])
+		quarters_df_market = df_market.resample('4M').apply(lambda x: x[-1])
 
 
+		################################ FUNCTIONS 
 
+
+		def rolling_mean_std(df,df_close,t_window) :
+			df[f'{t_window}'] = df_close.rolling(window=t_window).mean()
+			rm = df_close.rolling(window=t_window).mean()
+			df[f'std_{t_window}'] = df_close.rolling(window=t_window).std()
+			rstd = df_close.rolling(window=t_window).std()
+			df['upper_band'] = rm + rstd *2
+			df['lower_band'] = rm - rstd *2
+			return df
+
+		def get_estimator(price_data, window=30, trading_periods=252, clean=True):
+			'''
+			Volatility calculation
+			'''
+
+			log_hl = (price_data['High'] / price_data['Low']).apply(np.log)
+			log_co = (price_data['Close'] / price_data['Open']).apply(np.log)
+
+			rs = 0.5 * log_hl**2 - (2*math.log(2)-1) * log_co**2
+			
+			def f(v):
+				return (trading_periods * v.mean())**0.5
+			
+			result = rs.rolling(window=window, center=False).apply(func=f)
+			
+			if clean:
+				return result.dropna()
+			else:
+				return result
+
+			
+		def moving_average(df, n):
+			n=n+1
+			MA = pd.Series(df['Adj Close'].rolling(n, min_periods=n).mean(), name='MA_' + str(n-1))
+			df= df.join(MA)
+			return df
+
+
+		def exponential_moving_average(df, n):
+			n=n+1
+			EMA = pd.Series(df['Adj Close'].ewm(span=n, min_periods=n).mean(), name='EMA_' + str(n-1))
+			df= df.join(EMA)
+			return df
+
+
+		def compute_daily_returns(df):
+			daily_returns = (df/df.shift(1)) - 1
+			daily_returns = daily_returns.fillna(0)
+			return daily_returns
+
+
+		def relative_strength_index(df, n):
+			'''
+			RSI à utiliser dans le DL
+			'''
+			n=n+1
+			i = 0
+			UpI = [0]
+			DoI = [0]
+			while i + 1 <= df.reset_index(drop = True).index[-1]:
+				UpMove = df.reset_index(drop = True).loc[i + 1, 'High'] - df.reset_index(drop = True).loc[i, 'High']
+				DoMove = df.reset_index(drop = True).loc[i, 'Low'] - df.reset_index(drop = True).loc[i + 1, 'Low']
+				if UpMove > DoMove and UpMove > 0:
+					UpD = UpMove
+				else:
+					UpD = 0
+				UpI.append(UpD)
+				if DoMove > UpMove and DoMove > 0:
+					DoD = DoMove
+				else:
+					DoD = 0
+				DoI.append(DoD)
+				i = i + 1
+			UpI = pd.Series(UpI)
+			DoI = pd.Series(DoI)
+			PosDI = pd.Series(UpI.ewm(span=n, min_periods=n).mean())
+			NegDI = pd.Series(DoI.ewm(span=n, min_periods=n).mean())
+			RSI = pd.Series(PosDI / (PosDI + NegDI))
+			return RSI
+
+		def VaR(df):
+			daily_returns = df["Adj Close"].pct_change()
+			daily_returns = daily_returns.dropna(how='any') 
+			
+			#Sort Returns in Ascending Order
+			sorted_returns = sorted(daily_returns)
+			varg = np.percentile(sorted_returns, 5)
+			return varg
+
+		#indicators
+		
+		df['daily returns'] = compute_daily_returns(df['Adj Close'])
+		#########indicators
+		for n in [5,10,20,50,100]:
+			##########moving averages
+			df = moving_average(df,n)
+			df = exponential_moving_average(df,n)
+			##########RSI
+			df[f'RSI{n}'] = relative_strength_index(df,n).values
+		
+		########CAPM (MEDAF)
+
+		##########monthly_data
+		monthly_returns = monthlydf['Adj Close'].pct_change(1)
+		clean_monthly_returns = monthly_returns.dropna(axis=0)# drop first missing row
+		y = clean_monthly_returns
+
+		market_monthly_returns = monthly_df_market['Adj Close'].pct_change(1)
+		market_clean_monthly_returns = market_monthly_returns.dropna(axis=0)
+		x = market_clean_monthly_returns
+		slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+
+		df['beta'] = slope
+
+
+		######## Valuation at risk VaR
+		df['VaR'] = VaR(df)
+
+		########sharp ratio
+		returns = df['daily returns']
+		# annualized Sharpe ratio
+		sharpe_ratio = np.sqrt(252) * (returns.mean() / returns.std())
+		df['sharpe_ratio'] = sharpe_ratio
+
+		######## compound annual growth rate (CAGR)
+		# Get the number of days 
+		days = (df.index[-1] - df.index[0]).days
+		# Calculate the CAGR 
+		cagr = ((((df['Adj Close'][-1]) / df['Adj Close'][1])) ** (365.0/days)) - 1
+		df['cagr'] = cagr
+		
+		#param
 		ma5 = "{0:.2f}".format(round(df['MA_5'].iloc[-1],2)) 
 		ma10 = "{0:.2f}".format(round(df['MA_10'].iloc[-1],2))  
 		ma20 = "{0:.2f}".format(round(df['MA_20'].iloc[-1],2))   
@@ -345,9 +645,8 @@ def tech_analysis(request):
 		def movingaverage(interval, window_size=10):
 			window = np.ones(int(window_size))/float(window_size)
 			return np.convolve(interval, window, 'same')
-
 		mv_y = movingaverage(df.Close)
-		mv_x = df.Date
+		mv_x = df.index
 
 		# Clip the ends
 		mv_x = mv_x[5:-5]
@@ -358,7 +657,7 @@ def tech_analysis(request):
 
 		x,y,z,w,k,v=[],[],[],[],[],[]
 
-		x=df['Date'].tolist()
+		x=df.index.tolist()
 		y=df['Open'].tolist()
 		z=df['High'].tolist()
 		w=df['Low'].tolist()
